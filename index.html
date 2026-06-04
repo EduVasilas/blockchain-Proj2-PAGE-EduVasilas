@@ -362,6 +362,13 @@
             <button
               type="button"
               class="btn btn-sm btn-outline-primary"
+              id="refund_me_all_2">
+              ↶ refund me from all Auctions
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary"
               id="refresh_Fulfilled_Auctions">
               ↻ Refresh
             </button>
@@ -422,7 +429,6 @@
       
       //#endregion
       
-      //change this to the ACTUAL contract address that you created on truffle migrate
       //Sepolia deploy address:
       const contractAddress = "0x276e23E8036cf80bAb4D0360527A66535c09a570";
       const AuctionContract = new web3.eth.Contract(abi, contractAddress);
@@ -431,6 +437,7 @@
 
       let owner;
       let destroyed; 
+      
 
       window.addEventListener("load", async () => {
 
@@ -438,8 +445,11 @@
         console.log("destroyed =", destroyed);
 
         if (destroyed){
+          
           alert("This contract has been destroyed.");
+          
           $("body").css({"background-color": "#ff0303", "opacity": "0.95"  });
+          
           $("body").prepend(`
             <div class="alert alert-danger text-center mb-4">
               <strong>CONTRACT DESTROYED</strong><br>
@@ -451,6 +461,7 @@
         }else{
           $("body").css({"background-color": "#f0f4fa "});
         }
+
 
         owner = await AuctionContract.methods.owner().call();
         console.log("owner =", owner);
@@ -488,26 +499,7 @@
           
           $("#connectMetaMask").addClass("btn-secondary").removeClass("btn-success").html("connected");
           
-          // for Create Auction button 
-          await loadCanceledAuctions();
-          
-          await loadFulfilledAuctions();
-          
-          Create_Owners_button_Withdraw();
-          
-          updateCreateAuctionButton();
-          
-          if (destroyed){return;}
-                    
-          await loadLiveAuctions();
-
-          Create_Change_Owner_button();
-
-          Create_Bann_User_button();
-
-          Delete_Contract();
-
-          $("body").css({"background-color": "#90d5ff"});
+          function_list();
 
         } catch (error) {
           alert("Error . please refresh the page. See console for details.");
@@ -520,7 +512,8 @@
         
         
         Client = new_accounts[0];
-        
+        console.log("new Client:", Client)
+
         if (!Client) {
           alert("Δεν έχει συνδεθεί MetaMask wallet.");
           $("#wallet-Address").html("Wallet not connected").removeClass("alert-success").addClass("alert-danger");
@@ -534,27 +527,37 @@
           $("#ownerInfo").html("<b>YOU</b>");
         }
         
-        // for Create Auction button 
-        await updateCreateAuctionButton();
-        
-        // reload live auctions to update buttons
-        await loadCanceledAuctions();
-        
-        await Create_Owners_button_Withdraw();
-        
-        if (destroyed){return;}
-        
-        await loadLiveAuctions();
-        
-        await loadFulfilledAuctions();
-
-        await Create_Change_Owner_button();
-
-        await Create_Bann_User_button();
-
-        await Delete_Contract();
+        function_list();
 
       });
+
+      async function function_list() {
+        // for Create Auction button 
+          await loadCanceledAuctions();
+          
+          await loadFulfilledAuctions();
+          
+          Create_Owners_button_Withdraw();
+                    
+          updateCreateAuctionButton();
+          
+          if (destroyed){return;}
+
+          Delete_Contract();
+          
+          
+          const isBanned = await Check_ban();
+          if(isBanned){$("body").css({"background-color": "#808080"}); return;}
+                    
+          await loadLiveAuctions();
+
+          Create_Change_Owner_button();
+
+          Create_Bann_User_button();
+
+          $("body").css({"background-color": "#90d5ff"});
+
+      }
       
       //#endregion
       //#region  ████████████████████████████       Load Contract Info       █████████████████████
@@ -630,16 +633,19 @@
 
       async function updateCreateAuctionButton(){
 
-        const disable = ((owner.toLowerCase() == Client.toLowerCase())|| destroyed) ;
-
+        const banned_client = await Check_ban();
+        
+        const disable = ((owner.toLowerCase() == Client.toLowerCase()) || destroyed || banned_client) ;
+  
+        
         $("#createAuctionBtn").prop("disabled", disable);
-
+        
         if (disable) {
-
+          
           $("#createAuctionBtn")
-            .removeClass("btn-primary")
-            .addClass("btn-secondary");
-
+          .removeClass("btn-primary")
+          .addClass("btn-secondary");
+          
         } else {
 
           $("#createAuctionBtn")
@@ -649,6 +655,7 @@
         }
 
       }
+      
       //#endregion
       //#region  ████████████████████████████     Live auction LIST stuff    █████████████████████
 
@@ -946,12 +953,15 @@
           }
 
           if (HONEY > 0) {
+            
             console.log("You have deposits to refund from canceled auctions. Enabling 'refund me all' button.");
+            
             $("#refund_me_all").prop("disabled", false)
               .removeClass("btn-secondary")
               .addClass("btn-outline-primary");
             
           } else {
+            
             console.log("No deposits to refund from canceled auctions. Disabling 'refund me all' button.");
 
             $("#refund_me_all").prop("disabled", true)
@@ -976,6 +986,21 @@
           await AuctionContract.methods.refund_me_all().send({ from: Client });
 
           alert("Refunded all your deposits from canceled auctions!");
+          
+          await loadCanceledAuctions();
+          
+        } catch (error) {
+          console.error("Error refunding all deposits:", error);
+          alert("Failed to refund all deposits. See console for details.");
+        }
+      });
+
+      $("#refund_me_all_2").click(async function () {
+        try {
+
+          await AuctionContract.methods.refund_me_all().send({ from: Client });
+
+          alert("Refunded all your deposits from fulfilled auctions!");
           
           await loadCanceledAuctions();
           
@@ -1037,15 +1062,17 @@
           }
 
           if (HONEY > 0) {
-            console.log("You have deposits to refund from canceled auctions. Enabling 'refund me all' button.");
-            $("#refund_me_all").prop("disabled", false)
+            console.log("You have deposits to refund from fulfilled auctions. Enabling 'refund me all' button.");
+            
+            $("#refund_me_all_2").prop("disabled", false)
               .removeClass("btn-secondary")
               .addClass("btn-outline-primary");
             
           } else {
-            console.log("No deposits to refund from canceled auctions. Disabling 'refund me all' button.");
+            
+            console.log("No deposits to refund from fulfilled auctions. Disabling 'refund me all' button.");
 
-            $("#refund_me_all").prop("disabled", true)
+            $("#refund_me_all_2").prop("disabled", true)
               .removeClass("btn-outline-primary")
               .addClass("btn-secondary");
 
@@ -1117,16 +1144,19 @@
 
       async function Delete_Contract() {
         
-        if(Client.toLowerCase() != owner.toLowerCase()){ return ;}
+        if(Client.toLowerCase() == owner.toLowerCase()){
+          $("#deleteContractContainer").html(`
+              <button
+                type="button"
+                id="Delete_Contract_bn"
+                class="btn btn-danger btn-sm btn-sm">
+                Delete Contract
+              </button>
+          `)
+        }else{
+          $("#deleteContractContainer").html(``)
+        }
           
-        $("#deleteContractContainer").html(`
-            <button
-              type="button"
-              id="Delete_Contract_bn"
-              class="btn btn-danger btn-sm btn-sm">
-              Delete Contract
-            </button>
-        `)
                   
       }
 
@@ -1161,6 +1191,20 @@
         
       }
 
+      async function Check_ban() {
+        const banned_list = await AuctionContract.methods.get_Banned_Users().call();
+        
+        let banned_client = false ;
+
+        for (const ban_adress of banned_list) {
+          if (ban_adress.toLowerCase() === Client.toLowerCase()) {
+            banned_client = true;
+            break;
+          }
+        }
+        console.log("Client ",Client ,"is banned =", banned_client);
+        return banned_client
+      }
 
       $(document).on("click", "#Delete_Contract_bn" , async function () {
         
