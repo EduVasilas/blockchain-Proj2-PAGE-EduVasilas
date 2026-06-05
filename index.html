@@ -437,7 +437,7 @@
       //#endregion
       
       //Sepolia deploy address:
-      const contractAddress = "0xAC6B61e1C36b0f2a48E393256689D37Da508cB82";
+      const contractAddress = "0x6b3BED10B83f26acc11285e413723a1Ae114ae9B";
       const AuctionContract = new web3.eth.Contract(abi, contractAddress);
 
       //#region  ████████████████████████████             ON LOAD            █████████████████████
@@ -647,7 +647,8 @@
       async function updateCreateAuctionButton(){
 
         const banned_client = await Check_ban();
-        const disable = ( destroyed || banned_client) ;
+        const admin = (owner.toLowerCase() == Client.toLowerCase()) ||  (permanent_owner.toLowerCase() == Client.toLowerCase())
+        const disable = ( admin ||destroyed || banned_client) ;
           
         $("#createAuctionBtn").prop("disabled", disable);
         
