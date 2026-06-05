@@ -437,7 +437,7 @@
       //#endregion
       
       //Sepolia deploy address:
-      const contractAddress = "0x6b3BED10B83f26acc11285e413723a1Ae114ae9B";
+      const contractAddress = "0xe1E69C4562CfAb05c2A5a9f873AbF655a94b8955";
       const AuctionContract = new web3.eth.Contract(abi, contractAddress);
 
       //#region  ████████████████████████████             ON LOAD            █████████████████████
@@ -687,7 +687,7 @@
           }
 
           // loop to display each auction in the table
-          auctions.forEach(auction => {
+          for (const auction of auctions) {
 
             const id              = auction[0]; // id
             const title           = auction[1]; // title
@@ -718,6 +718,10 @@
 
             const is_not_highest_bidder = (highestBidder.toLowerCase() != Client.toLowerCase()) ;
 
+            const bidder_deposit = await AuctionContract.methods.bidders_deposits(id, Client).call();
+            console.log("bidder_deposit:",bidder_deposit);
+            HONEY = Number(web3.utils.fromWei(bidder_deposit, "ether"));
+
             //-------------------------------load each auction and buttons------------------------------------------------------------------ 
             // --------- spawn butttons -----------------------------------------
             const BidButton = (is_open && auctionType == 0)
@@ -730,18 +734,18 @@
                 `
               : "";
 
-            const RefundButton = (is_not_highest_bidder || auctionType == 1)
-              ? `
-                  <button type="button" class="btn btn-primary refund-btn"
-                          data-id="${id}">
-                      ↶
-                  </button>
-                `
-              : `        
-                <span class="badge bg-success">
-                    You are highest bidder
-                </span>
-              `;
+            const RefundButton = (HONEY < 0) ? `` : (is_not_highest_bidder || auctionType == 1)
+                  ? `
+                      <button type="button" class="btn btn-primary refund-btn"
+                              data-id="${id}">
+                          ↶
+                      </button>
+                    `
+                  : `
+                      <span class="badge bg-success">
+                          You are highest bidder
+                      </span>
+                    `;
 
             const cancelButton = ( (is_Owner || is_Seller) && auctionType == 0 )
               ? `
@@ -791,7 +795,8 @@
 
               </tr>
               `);             
-            });
+            
+            }
 
         } catch (error) { 
           alert("Error loading live auctions. See console for details.");
@@ -946,7 +951,7 @@
             const seller          = auction[2]; // seller
             
             const bidder_deposit = await AuctionContract.methods.bidders_deposits(id, Client).call();
-            console.log(bidder_deposit);
+            console.log("bidder_deposit:",bidder_deposit);
 
             HONEY += Number(web3.utils.fromWei(bidder_deposit, "ether"));
 
