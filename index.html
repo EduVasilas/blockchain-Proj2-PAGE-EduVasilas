@@ -720,7 +720,7 @@
 
             const bidder_deposit = await AuctionContract.methods.bidders_deposits(id, Client).call();
             HONEY = Number(web3.utils.fromWei(bidder_deposit, "ether"));
-            console.log("bidder_deposit:",HONEY);
+            console.log("bidder_deposit:", HONEY);        
 
             //-------------------------------load each auction and buttons------------------------------------------------------------------ 
             // --------- spawn butttons -----------------------------------------
