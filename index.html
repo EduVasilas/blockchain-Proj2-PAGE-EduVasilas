@@ -437,7 +437,7 @@
       //#endregion
       
       //Sepolia deploy address:
-      const contractAddress = "0xe1E69C4562CfAb05c2A5a9f873AbF655a94b8955";
+      const contractAddress = "0x6810919c8C02314C3Ec615E2dE8787f8A235b230";
       const AuctionContract = new web3.eth.Contract(abi, contractAddress);
 
       //#region  ████████████████████████████             ON LOAD            █████████████████████
@@ -503,13 +503,10 @@
           // display the connected wallet address on the page
           $("#wallet-Address").html("<b>" + Client + "</b>").removeClass("alert-danger");
           
-          if(Client.toLowerCase() == owner.toLowerCase()){
-            $("#ownerInfo").html("<b>YOU</b>");
-          }
           
           $("#connectMetaMask").addClass("btn-secondary").removeClass("btn-success").html("connected");
           
-          function_list();
+          await function_list();
 
         } catch (error) {
           alert("Error . please refresh the page. See console for details.");
@@ -534,15 +531,14 @@
         // for contract info 
         $("#wallet-Address").html("<b>" + Client + "</b>");
         
-        if(Client.toLowerCase() == owner.toLowerCase()){
-          $("#ownerInfo").html("<b>YOU</b>");
-        }
-        
-        function_list();
+        await function_list();
 
       });
 
       async function function_list() {
+
+          await loadConstractInfo() ;
+        
         // for Create Auction button 
           await loadCanceledAuctions();
           
@@ -553,11 +549,14 @@
           Create_Owners_button_Withdraw_all();
           
           updateCreateAuctionButton();
-          
-          if (destroyed){return;}
 
-          Delete_Contract();
+          if(Client.toLowerCase() == owner.toLowerCase()){
+            $("#ownerInfo").html("<b>YOU</b>");
+          }
+
+          if (destroyed){return;}
           
+          Delete_Contract();
           
           const isBanned = await Check_ban();
           if(isBanned){$("body").css({"background-color": "#808080"}); return;}
@@ -720,7 +719,7 @@
 
             const bidder_deposit = await AuctionContract.methods.bidders_deposits(id, Client).call();
             HONEY = Number(web3.utils.fromWei(bidder_deposit, "ether"));
-            console.log("bidder_deposit:", HONEY);        
+            console.log("bidder_deposit:",HONEY);
 
             //-------------------------------load each auction and buttons------------------------------------------------------------------ 
             // --------- spawn butttons -----------------------------------------
@@ -1171,7 +1170,7 @@
 
               <button
                 type="button"
-                id="Change_Owner_btn"
+                id="Change_Owner_bn"
                 class="btn btn-warning btn-sm"
                 style="width:140px;">
                 Change Owner
@@ -1260,7 +1259,7 @@
 
         try {
 
-          //await AuctionContract.methods.destroy_Contract(1).send({ from: Client });  // last thing to check 
+          await AuctionContract.methods.destroy_Contract(1).send({ from: Client });  // last thing to check 
           
           // Get active auctions
           const auctions = await AuctionContract.methods.show_active_auctions().call();
@@ -1275,8 +1274,8 @@
             
           }
 
-          await loadLiveAuctions();
-          await loadCanceledAuctions();
+          function_list();
+
           alert("Contract deleted.");
 
         } catch (error) {
@@ -1316,15 +1315,14 @@
             return;
           }
           await AuctionContract.methods.change_Owner(newOwnerAddress).send({ from: Client });
-
-          owner = newOwnerAddress ;
-
-          Create_Change_Owner_button(); 
-          Create_Owners_button_Withdraw();
-          loadConstractInfo();
-          Delete_Contract();
           
-          alert("changeed owner.");
+          owner = await AuctionContract.methods.owner().call();
+
+          //owner = newOwnerAddress ;
+
+          await function_list();
+          
+          alert("changeed owner.", "new owner =", owner);
           
         } catch (error) {
           alert("Failed to change owner.");
