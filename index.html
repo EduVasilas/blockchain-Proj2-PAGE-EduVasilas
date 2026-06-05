@@ -719,8 +719,8 @@
             const is_not_highest_bidder = (highestBidder.toLowerCase() != Client.toLowerCase()) ;
 
             const bidder_deposit = await AuctionContract.methods.bidders_deposits(id, Client).call();
-            console.log("bidder_deposit:",bidder_deposit);
             HONEY = Number(web3.utils.fromWei(bidder_deposit, "ether"));
+            console.log("bidder_deposit:",HONEY);
 
             //-------------------------------load each auction and buttons------------------------------------------------------------------ 
             // --------- spawn butttons -----------------------------------------
@@ -734,7 +734,9 @@
                 `
               : "";
 
-            const RefundButton = (HONEY < 0) ? `` : (is_not_highest_bidder || auctionType == 1)
+            const RefundButton = (HONEY <= 0) 
+              ? `` 
+              : (is_not_highest_bidder || auctionType == 1)
                   ? `
                       <button type="button" class="btn btn-primary refund-btn"
                               data-id="${id}">
