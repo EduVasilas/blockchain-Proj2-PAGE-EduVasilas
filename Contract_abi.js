@@ -745,6 +745,13 @@ var abi = [
 	},
 	{
 		"inputs": [],
+		"name": "withdraw_All",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "withdraw_owners_Revenue",
 		"outputs": [],
 		"stateMutability": "nonpayable",

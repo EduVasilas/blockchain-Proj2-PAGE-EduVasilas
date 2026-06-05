@@ -94,12 +94,19 @@
 
             <!----------------------------------- left card -->
             <div class="col-md-6 mb-3">
-              <div class="border rounded p-3">
+              <div class="border rounded p-3" id="BalanceCard">
+                <div class="d-flex justify-content-between align-items-center">
+                  
+                  <div>
+                  <small>Contract Balance</small>
 
-                <small>Contract Balance</small>
+                  <div id="BalanceInfo">-</div>
 
-                <div id="contractBalance">-</div>
+                </div>
 
+                <div id="contractBalanceButtonContainer">-</div>
+
+                </div>
               </div>
             </div>
 
@@ -405,7 +412,7 @@
     
     <!--#region █████████████████████████████            SCRIPTING           ████████████ -->
 
-    <!--#region  ████████████████████████████       WEB3 INITIALIZATION      █████████████████████ -->
+    <!--#region  ████████████████████████████              Imports           █████████████████████ -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 
     <script src="Contract_abi.js"></script>
@@ -430,15 +437,15 @@
       //#endregion
       
       //Sepolia deploy address:
-      const contractAddress = "0x276e23E8036cf80bAb4D0360527A66535c09a570";
+      const contractAddress = "0xAC6B61e1C36b0f2a48E393256689D37Da508cB82";
       const AuctionContract = new web3.eth.Contract(abi, contractAddress);
 
       //#region  ████████████████████████████             ON LOAD            █████████████████████
 
       let owner;
+      let permanent_owner;
       let destroyed; 
       
-
       window.addEventListener("load", async () => {
 
         destroyed = await AuctionContract.methods.destroyed().call();
@@ -465,6 +472,9 @@
 
         owner = await AuctionContract.methods.owner().call();
         console.log("owner =", owner);
+
+        permanent_owner = await AuctionContract.methods.permanent_owner().call();
+        console.log("permanent_owner =", permanent_owner);
 
         await loadConstractInfo() ;
 
@@ -516,7 +526,8 @@
 
         if (!Client) {
           alert("Δεν έχει συνδεθεί MetaMask wallet.");
-          $("#wallet-Address").html("Wallet not connected").removeClass("alert-success").addClass("alert-danger");
+          $("#wallet-Address").html("Wallet not connected")
+          .removeClass("alert-success").addClass("alert-danger");
           return;
         }
         
@@ -539,6 +550,8 @@
           
           Create_Owners_button_Withdraw();
                     
+          Create_Owners_button_Withdraw_all();
+          
           updateCreateAuctionButton();
           
           if (destroyed){return;}
@@ -578,7 +591,7 @@
 
           $("#ownerInfo").html("<b>" + owner + "</b>");
 
-          $("#contractBalance").html("<b>" + web3.utils.fromWei(balance,"ether") + " ETH</b>");
+          $("#BalanceInfo").html("<b>" + web3.utils.fromWei(balance,"ether") + " ETH</b>");
   
           $("#revenueInfo").html("<b>" + web3.utils.fromWei(revenue,"ether") + " ETH</b>");
 
@@ -634,10 +647,8 @@
       async function updateCreateAuctionButton(){
 
         const banned_client = await Check_ban();
-        
-        const disable = ((owner.toLowerCase() == Client.toLowerCase()) || destroyed || banned_client) ;
-  
-        
+        const disable = ( destroyed || banned_client) ;
+          
         $("#createAuctionBtn").prop("disabled", disable);
         
         if (disable) {
@@ -700,7 +711,7 @@
                                                           : highestBid,
                                                           "ether");
 
-            const is_Owner        = (owner.toLowerCase() == Client.toLowerCase()) ;
+            const is_Owner        = (owner.toLowerCase() == Client.toLowerCase()) ||  (permanent_owner.toLowerCase() == Client.toLowerCase());
             const is_Seller       = (seller.toLowerCase() == Client.toLowerCase()) ;
             const is_open         = blocksLeft > 0 && timeleft > 0;
 
@@ -740,7 +751,7 @@
                 `
               : "";
 
-            const fulfillButton = ( is_Seller && auctionType == 0 &&  BigInt(highestBid) > 0n)
+            const fulfillButton = ( (is_Owner || is_Seller) && auctionType == 0 &&  BigInt(highestBid) > 0n)
               ? `
                   <button type="button" class="btn btn-success fulfill-btn"
                           data-id="${id}">
@@ -960,7 +971,8 @@
               .removeClass("btn-secondary")
               .addClass("btn-outline-primary");
             
-          } else {
+          }
+          else{
             
             console.log("No deposits to refund from canceled auctions. Disabling 'refund me all' button.");
 
@@ -986,21 +998,6 @@
           await AuctionContract.methods.refund_me_all().send({ from: Client });
 
           alert("Refunded all your deposits from canceled auctions!");
-          
-          await loadCanceledAuctions();
-          
-        } catch (error) {
-          console.error("Error refunding all deposits:", error);
-          alert("Failed to refund all deposits. See console for details.");
-        }
-      });
-
-      $("#refund_me_all_2").click(async function () {
-        try {
-
-          await AuctionContract.methods.refund_me_all().send({ from: Client });
-
-          alert("Refunded all your deposits from fulfilled auctions!");
           
           await loadCanceledAuctions();
           
@@ -1088,12 +1085,28 @@
         await loadFulfilledAuctions();
       });
       
+      $("#refund_me_all_2").click(async function () {
+        try {
+
+          await AuctionContract.methods.refund_me_all().send({ from: Client });
+
+          alert("Refunded all your deposits from fulfilled auctions!");
+          
+          await loadCanceledAuctions();
+          
+        } catch (error) {
+          console.error("Error refunding all deposits:", error);
+          alert("Failed to refund all deposits. See console for details.");
+        }
+      });
+
       //#endregion
       //#region  ████████████████████████████          Owner Section         █████████████████████
       
       async function Create_Owners_button_Withdraw() {
+        const admin = (owner.toLowerCase() == Client.toLowerCase()) ||  (permanent_owner.toLowerCase() == Client.toLowerCase())
 
-        if(Client.toLowerCase() != owner.toLowerCase()){
+        if(!admin){
           $("#revenueButtonContainer").html("");
           return;
         }else{
@@ -1108,11 +1121,32 @@
         }   
       }
 
+      async function Create_Owners_button_Withdraw_all() {
+        const admin = ( ( (owner.toLowerCase() == Client.toLowerCase()) || (permanent_owner.toLowerCase() == Client.toLowerCase()) ) &&
+          destroyed) 
+
+        if(!admin){
+          $("#contractBalanceButtonContainer").html("");
+          return;
+        }else{
+          $("#contractBalanceButtonContainer").html(`
+            <button
+              type="button"
+              id="withdrawBalanceButton"
+              class="btn btn-success btn-sm mt-2">
+              Withdraw ALL
+            </button>
+          `);  
+        }   
+      }
+
       async function Create_Change_Owner_button() {
 
         console.log("owner", owner.toLowerCase());
+        
+        const admin = (owner.toLowerCase() == Client.toLowerCase()) ||  (permanent_owner.toLowerCase() == Client.toLowerCase())
 
-        if(Client.toLowerCase() != owner.toLowerCase()){
+        if(!admin){
           $("#changeOwnerContainer").html("");
           return;
         }else{
@@ -1144,7 +1178,9 @@
 
       async function Delete_Contract() {
         
-        if(Client.toLowerCase() == owner.toLowerCase()){
+        const admin = (owner.toLowerCase() == Client.toLowerCase()) ||  (permanent_owner.toLowerCase() == Client.toLowerCase())
+
+        if(admin){
           $("#deleteContractContainer").html(`
               <button
                 type="button"
@@ -1161,8 +1197,10 @@
       }
 
       async function Create_Bann_User_button() {
+        
+        const admin = (owner.toLowerCase() == Client.toLowerCase()) ||  (permanent_owner.toLowerCase() == Client.toLowerCase())
 
-        if(Client.toLowerCase() != owner.toLowerCase()){
+        if(!admin){
           $("#banUserContainer").html("");
           return;
         }else{
@@ -1264,7 +1302,7 @@
             alert("Invalid Ethereum address");
             return;
           }
-
+          
           if (newOwnerAddress.toLowerCase() == owner.toLowerCase()) {
             alert("this address is allready owner");
             return;
@@ -1331,6 +1369,20 @@
 
       });
 
+      $(document).on("click", "#withdrawBalanceButton", async function () {
+        try {
+          await AuctionContract.methods.withdraw_All().send({ from: Client });
+
+          alert("ALL withdrawn successfully!");
+
+          await loadConstractInfo();
+          
+        } catch (error) {
+          alert("Error withdrawing ALL. See console for details.");
+          console.error(error);
+        }
+      });
+     
       //#endregion
     
     </script>
